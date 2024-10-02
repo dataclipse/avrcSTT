@@ -36,7 +36,7 @@ def show_overlay(message):
     message_label = tk.Label(root, text=message, font=("Helvetica", 16), fg="white", bg="black", wraplength=350)
     message_label.pack(expand=True)
 
-    # Close the overlay after 5 seconds
+    # Close the overlay after 2.5 seconds
     root.after(2500, root.destroy)
 
     # Run the overlay window
