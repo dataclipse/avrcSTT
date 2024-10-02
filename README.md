@@ -9,6 +9,7 @@
 - Create function for recognizing speech
 - Create function for sending text to vrc text box
 - Create function to display messages as notifications
+
 Todo:
 - Fix bugs with notification messages not functioning correctly
 - Create function to capture game audio
