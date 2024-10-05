@@ -58,9 +58,10 @@ async def async_send_message(address, args):
 # Function to send recognized text to VRChat chatbox
 async def chatbox(text):
     print(f"Sending text to chatbox: {text}")
-    await async_show_overlay(f"Sending text to chatbox: {text}")
     # Send the recognized text to the chatbox
     await async_send_message("/chatbox/input", [text, True])
+    await async_show_overlay(f"Sending text to chatbox: {text}")
+
 
 def record_audio(duration=5, sample_rate=16000):
     """Record audio from the microphone for a given duration."""
@@ -84,8 +85,12 @@ async def recognize_and_send():
         audio_data = record_audio(duration=5)
 
         # Save the recorded audio to a temporary file in the correct format for Whisper
-        temp_audio_filename = os.path.abspath("temp_audio.wav")
+        temp_audio_filename = os.path.abspath("temp_audio.wav")  # Use an absolute path
         save_audio_to_wav(audio_data, temp_audio_filename)
+
+        # Ensure the file exists after saving
+        if not os.path.exists(temp_audio_filename):
+            raise FileNotFoundError(f"File {temp_audio_filename} not found after saving.")
 
         # Use Whisper to transcribe the recorded audio
         print("Transcribing audio using Whisper...")
@@ -99,6 +104,10 @@ async def recognize_and_send():
         else:
             print("No speech detected, try again.")
             await async_show_overlay("No speech detected, try again.")
+
+    except FileNotFoundError as e:
+        print(f"File error: {e}")
+        await async_show_overlay(f"File error: {e}")
     except Exception as e:
         print(f"Error recognizing speech: {e}")
         await async_show_overlay(f"Error recognizing speech: {e}")
@@ -107,7 +116,6 @@ async def recognize_and_send():
 async def main():
     while True:
         await recognize_and_send()
-        time.sleep(1)  # Optional: Add a short delay between recognitions if needed
 
 # Run the async main loop
 if __name__ == "__main__":
