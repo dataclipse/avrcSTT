@@ -1,4 +1,4 @@
-# vrTranslate
+# avrcSTT
 
 - Install libraries
 ```
