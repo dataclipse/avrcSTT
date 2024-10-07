@@ -1,16 +1,7 @@
-import whisper
-import sounddevice as sd
-import numpy as np
-import tkinter as tk
-import asyncio
+import whisper, sounddevice as sd, numpy as np, tkinter as tk, asyncio, wave, os, warnings, signal, sys
 from pythonosc import udp_client
-import wave
-import time
-import os
-import warnings
 from threading import Thread
-import signal
-import sys
+
 
 # Suppress future and user warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -45,7 +36,7 @@ def handle_exit(signal, frame):
     print("Joining Thread...")
     asyncio_thread.join()  # Wait for the thread to finish
     print("Calling System Exit...")
-    sys.exit(0)  # Terminate the program
+    os._exit(0)  # Terminate the program
 
 # Set up the signal handler for Ctrl+C (SIGINT)
 signal.signal(signal.SIGINT, handle_exit)
