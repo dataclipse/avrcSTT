@@ -5,7 +5,7 @@ A learning project for myself to create a speech to text application for VRC
 
 - Install python libraries
 ```
-  pip install python-osc setuptools SpeechRecognition pyaudio whisper numpy sounddevice
+  pip install python-osc setuptools SpeechRecognition pyaudio whisper numpy sounddevice noisereduce scipy
 ```
 - Install ffmpeg for whisper
 ```

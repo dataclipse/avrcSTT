@@ -1,6 +1,7 @@
-import whisper, sounddevice as sd, numpy as np, tkinter as tk, asyncio, wave, os, warnings, signal, sys
+import whisper, sounddevice as sd, numpy as np, tkinter as tk, asyncio, wave, os, warnings, signal, noisereduce as nr
 from pythonosc import udp_client
 from threading import Thread
+from scipy.signal import butter, lfilter
 
 
 # Suppress future and user warnings
@@ -98,6 +99,7 @@ def record_audio(duration=5, sample_rate=16000):
     print("Recording audio...")
     audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='float32')
     sd.wait()  # Wait until the recording is finished
+
     return np.squeeze(audio)
 
 async def save_audio_to_wav_sync(audio_data, filename):
