@@ -29,6 +29,9 @@ File: SpeechToTextOSCWhisper.py
 
 - Utilizes Openai Whisper to transcribe audio from the microphone and insert the transcribed audio into VRC via the OSC protocol.
 
-Todo:
+**Todo:**
+
+- Process audio files to reduce background noise and improve quality
+- Log Transcribes to local db maybe utilizing sqllite
 - Create function to capture game audio
 - Create function to process game audio and translate
