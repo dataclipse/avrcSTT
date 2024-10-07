@@ -1,16 +1,33 @@
-# avrcSTT
+# avrcSTT - Another VRC Speech To Text
+A learning project for myself to create a speech to text application for VRC
 
-- Install libraries
+**Prerequisites:**
+
+- Install python libraries
 ```
-  pip install python-osc setuptools SpeechRecognition pyaudio
+  pip install python-osc setuptools SpeechRecognition pyaudio whisper numpy sounddevice
 ```
-- Included setuptools due to SpeechRecognition requiring a deprecated function 'distutils'
-- Test connections to VRC via OSC
-- Create function for recognizing speech
-- Create function for sending text to vrc text box
-- Create function to display messages as notifications
-- Added overlay to display messages for the user.
-- Altered most functions to enable async calling
+- Install ffmpeg for whisper
+```
+# Linux
+sudo apt update && sudo apt install ffmpeg
+
+# MacOS
+brew install ffmpeg
+
+# Windows
+chco install ffmpeg
+```
+
+**Features:**
+
+File: SpeechToTextOSC.py 
+
+- Utilizes Google SpeechRecognition to transcribe audio from the microphone and insert the transcribed audio into VRC via the OSC protocol.
+
+File: SpeechToTextOSCWhisper.py 
+
+- Utilizes Openai Whisper to transcribe audio from the microphone and insert the transcribed audio into VRC via the OSC protocol.
 
 Todo:
 - Create function to capture game audio
