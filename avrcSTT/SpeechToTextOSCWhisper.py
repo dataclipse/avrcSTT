@@ -9,6 +9,8 @@ import time
 import os
 import warnings
 from threading import Thread
+import signal
+import sys
 
 # Suppress future and user warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -22,14 +24,31 @@ port = 9000
 client = udp_client.SimpleUDPClient(ip, port)
 
 # Load the Whisper model (you can choose between 'tiny', 'base', 'small', 'medium', 'large')
-model = whisper.load_model("base")
+model = whisper.load_model("small")
 
+# Init variables to be used in the overlay creation
 overlay_root = None
 message_label = None
 
 def run_asyncio_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
+
+# Function to stop the asyncio loop
+def stop_asyncio_loop(loop):
+    loop.call_soon_threadsafe(loop.stop)
+
+# Function to handle Ctrl+C (KeyboardInterrupt)
+def handle_exit(signal, frame):
+    print("Ctrl+C detected. Stopping the asyncio loop and terminating the program...")
+    stop_asyncio_loop(asyncio_loop)  # Stop the asyncio loop
+    print("Joining Thread...")
+    asyncio_thread.join()  # Wait for the thread to finish
+    print("Calling System Exit...")
+    sys.exit(0)  # Terminate the program
+
+# Set up the signal handler for Ctrl+C (SIGINT)
+signal.signal(signal.SIGINT, handle_exit)
 
 # Start an asynico event loop in a separate thread
 asyncio_loop = asyncio.new_event_loop()
@@ -148,6 +167,7 @@ async def main():
             await recognize_and_send()
     except KeyboardInterrupt:
         print("Program Terminated by user.")
+
 # Run the async main loop
 if __name__ == "__main__":
     asyncio.run(main())
