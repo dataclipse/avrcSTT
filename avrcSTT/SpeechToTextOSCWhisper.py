@@ -1,8 +1,7 @@
-import whisper, sounddevice as sd, numpy as np, tkinter as tk, asyncio, wave, os, warnings, signal, noisereduce as nr
+import whisper, sounddevice as sd, numpy as np, tkinter as tk, asyncio, wave, os, warnings, signal, noisereduce as nr, soundfile as sf, re
 from pythonosc import udp_client
 from threading import Thread
 from scipy.signal import butter, lfilter
-
 
 # Suppress future and user warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -22,6 +21,7 @@ model = whisper.load_model("small")
 overlay_root = None
 message_label = None
 
+# Function to start base async loop to run the overlay on a separate thread.
 def run_asyncio_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
@@ -29,6 +29,21 @@ def run_asyncio_loop(loop):
 # Function to stop the asyncio loop
 def stop_asyncio_loop(loop):
     loop.call_soon_threadsafe(loop.stop)
+
+# Function to start async loop to show the overlay
+async def async_show_overlay(message):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, show_overlay, message)
+
+# Function to start async loop to send message to VRC via OSC
+async def async_send_message(address, args):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, client.send_message, address, args)
+
+# Function to start async loop to save the temporary audio file
+async def save_audio_to_wav_sync(audio_data, filename):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, save_audio_to_wav, audio_data, filename, 16000)
 
 # Function to handle Ctrl+C (KeyboardInterrupt)
 def handle_exit(signal, frame):
@@ -47,6 +62,7 @@ asyncio_loop = asyncio.new_event_loop()
 asyncio_thread = Thread(target=run_asyncio_loop, args=(asyncio_loop,))
 asyncio_thread.start()
 
+# Build overlay if it does not exist or update message if the overlay is already present
 def show_overlay(message):
     global overlay_root, message_label
     
@@ -78,14 +94,6 @@ def show_overlay(message):
     else:
         message_label.config(text=message)
 
-async def async_show_overlay(message):
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, show_overlay, message)
-
-async def async_send_message(address, args):
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, client.send_message, address, args)
-
 # Function to send recognized text to VRChat chatbox
 async def chatbox(text):
     print(f"Sending text to chatbox: {text}")
@@ -95,25 +103,58 @@ async def chatbox(text):
 
 # Function to record the audio from microphone
 def record_audio(duration=5, sample_rate=16000):
-    """Record audio from the microphone for a given duration."""
     print("Recording audio...")
     audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='float32')
     sd.wait()  # Wait until the recording is finished
-
     return np.squeeze(audio)
 
-async def save_audio_to_wav_sync(audio_data, filename):
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, save_audio_to_wav, audio_data, filename, 16000)
+def reduce_noise(audio_data, sample_rate):
+    reduced_noise = nr.reduce_noise(y=audio_data, sr=sample_rate)
+    return reduced_noise
+
+# High-pass filter
+def butter_highpass(cutoff, fs, order=5):
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+    return b, a
+
+def highpass_filter(data, cutoff, fs):
+    b, a = butter_highpass(cutoff, fs)
+    y = lfilter(b, a, data)
+    return y
+
+# Low-pass filter
+def butter_lowpass(cutoff, fs, order=5):
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
+
+def lowpass_filter(data, cutoff, fs):
+    b, a = butter_lowpass(cutoff, fs)
+    y = lfilter(b, a, data)
+    return y
+
+# Function to apply lowpass and highpass filters
+def apply_filters(audio_data, sample_rate, highpass_cutoff=100, lowpass_cutoff=7500):
+    audio_data = highpass_filter(audio_data, highpass_cutoff, sample_rate)
+    audio_data = lowpass_filter(audio_data, lowpass_cutoff, sample_rate)
+    return audio_data
 
 # Function to save the audio data recorded to a temporary wav file
 def save_audio_to_wav(audio_data, filename, sample_rate=16000):
-    """Save numpy audio data to a WAV file."""
     with wave.open(filename, 'wb') as wf:
         wf.setnchannels(1)  # Mono audio
         wf.setsampwidth(2)  # 16-bit audio
         wf.setframerate(sample_rate)
         wf.writeframes((audio_data * 32767).astype(np.int16).tobytes())
+
+def strip_punctuation(text):
+    return re.sub(r'[^\w\s]', '', text)
+
+def make_lowercase(text):
+    return re.sub(r'[A-Z]', lambda x: x.group(0).lower(), text)
 
 # Function to recognize speech from the microphone and send it to the chatbox
 async def recognize_and_send():
@@ -129,25 +170,53 @@ async def recognize_and_send():
         # Ensure the file exists after saving
         if not os.path.exists(temp_audio_filename):
             raise FileNotFoundError(f"File {temp_audio_filename} not found after saving.")
+        
+        # Read in audio data and sample rate from wav file
+        audio_data_from_file, sample_rate = sf.read(temp_audio_filename)
+        # Filter audio via noise reduction
+        filtered_audio = reduce_noise(audio_data_from_file, sample_rate)
+        # Apply lowpass and highpass filters
+        filtered_audio = apply_filters(audio_data_from_file, sample_rate)
+        # Rewrite filtered audiofile to the temp audio file
+        sf.write(temp_audio_filename, filtered_audio, sample_rate)
 
         # Use Whisper to transcribe the recorded audio
         print("Transcribing audio using Whisper...")
         asyncio.run_coroutine_threadsafe(async_show_overlay("Transcribing audio using Whisper..."), asyncio_loop)
-        result = model.transcribe(temp_audio_filename)
-        recognized_text = result["text"].strip()
+        
+        # Run Multiple transcribes to determine confidence the model is not hallucinating. 
+        result1 = model.transcribe(temp_audio_filename, temperature=0.0, beam_size=5, language="en", task="transcribe")
+        result2 = model.transcribe(temp_audio_filename, temperature=0.1, beam_size=5, language="en", task="transcribe")
+        
+        # Strip punctuation before a comparison
+        result1text = strip_punctuation(result1["text"].strip())
+        result2text = strip_punctuation(result2["text"].strip())
 
-        if recognized_text:
-            print(f"Recognized text: {recognized_text}")
-            # Send recognized text to VRChat chatbox
-            await chatbox(recognized_text)
-            asyncio.run_coroutine_threadsafe(async_show_overlay(recognized_text), asyncio_loop)
+        # Make the text all lowercase before a comparison
+        result1text = make_lowercase(result1text)
+        result2text = make_lowercase(result2text)
+        
+        if result1text == result2text:
+            recognized_text = result1["text"].strip()
+            if recognized_text:
+                print(f"Recognized text: {recognized_text}")
+                # Send recognized text to VRChat chatbox
+                await chatbox(recognized_text)
+                asyncio.run_coroutine_threadsafe(async_show_overlay(recognized_text), asyncio_loop)
+            else:
+                print("No speech detected, try again.")
+                asyncio.run_coroutine_threadsafe(async_show_overlay("No speech detected, try again."), asyncio_loop)
         else:
-            print("No speech detected, try again.")
-            asyncio.run_coroutine_threadsafe(async_show_overlay("No speech detected, try again."), asyncio_loop)
+            print("Outputs did not match, model might be hallucinating.")
+            print(f"Result1 text: {result1text}")
+            print(f"Result2 text: {result2text}")
+
+
 
     except FileNotFoundError as e:
         print(f"File error: {e}")
         asyncio.run_coroutine_threadsafe(async_show_overlay(f"File error: {e}"), asyncio_loop)
+
     except Exception as e:
         print(f"Error recognizing speech: {e}")
         asyncio.run_coroutine_threadsafe(async_show_overlay(f"Error recognizing speech: {e}"), asyncio_loop)
