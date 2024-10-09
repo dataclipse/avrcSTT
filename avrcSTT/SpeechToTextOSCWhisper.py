@@ -108,6 +108,7 @@ def record_audio(duration=5, sample_rate=16000):
     sd.wait()  # Wait until the recording is finished
     return np.squeeze(audio)
 
+# Function to reduce noise
 def reduce_noise(audio_data, sample_rate):
     reduced_noise = nr.reduce_noise(y=audio_data, sr=sample_rate)
     return reduced_noise
