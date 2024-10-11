@@ -18,30 +18,30 @@ class CustomWindow():
         self.text_display.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Create a frame for the label, combobox, and buttons
-        bottom_frame = ttk.Frame(root)
-        bottom_frame.pack(pady=10, padx=10, fill="x")
+        self.bottom_frame = ttk.Frame(root)
+        self.bottom_frame.pack(pady=10, padx=10, fill="x")
 
         # Left-aligned label and combobox
-        label = ttk.Label(bottom_frame, text="Select Transcribe Model:")
-        label.grid(row=0, column=0, padx=5, sticky="w")
+        self.label = ttk.Label(self.bottom_frame, text="Select Transcribe Model:")
+        self.label.grid(row=0, column=0, padx=5, sticky="w")
 
-        combo_box = ttk.Combobox(bottom_frame, values=["OpenAI Whisper", "Google Voice Recognition"])
-        combo_box.set("OpenAI Whisper")  # Set default value
-        combo_box.grid(row=0, column=1, padx=5, sticky="w")
+        self.combo_box = ttk.Combobox(self.bottom_frame, values=["OpenAI Whisper", "Google Voice Recognition"])
+        self.combo_box.set("OpenAI Whisper")  # Set default value
+        self.combo_box.grid(row=0, column=1, padx=5, sticky="w")
 
         # Create a frame for the right-aligned buttons
-        button_frame = ttk.Frame(bottom_frame)
-        button_frame.grid(row=0, column=2, padx=5, sticky="e")
+        self.button_frame = ttk.Frame(self.bottom_frame)
+        self.button_frame.grid(row=0, column=2, padx=5, sticky="e")
 
         # Right-aligned buttons
-        button1 = ttk.Button(button_frame, text="Start STT")
-        button1.pack(side="left", padx=5)
+        self.button1 = ttk.Button(self.button_frame, text="Start STT")
+        self.button1.pack(side="left", padx=5)
 
-        button2 = ttk.Button(button_frame, text="Stop STT")
-        button2.pack(side="left", padx=5)
+        self.button2 = ttk.Button(self.button_frame, text="Stop STT")
+        self.button2.pack(side="left", padx=5)
 
         # Configure the grid so that it expands properly
-        bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
+        self.bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
 
         sv_ttk.set_theme("dark")
         self.apply_theme_to_titlebar(root)
