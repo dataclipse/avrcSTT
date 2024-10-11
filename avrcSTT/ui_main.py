@@ -1,205 +1,60 @@
-import sys
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QHBoxLayout, QStyle, QPushButton, QFrame, QTextBrowser, QComboBox, QSizePolicy
-from PyQt6.QtGui import QGuiApplication
+import tkinter as tk
+from tkinter import ttk
+import sv_ttk
+import pywinstyles, sys
 
-class CustomTitleBar(QWidget):
-    def __init__(self, parent):
-        super().__init__()
+class CustomWindow():
+    def __init__(self, root):
+        self.root = root
 
-        # Set parent widget
-        self.parent = parent
-        self.setAutoFillBackground(True)
-        self.initial_pos = None
-        self.is_window_maximized = False  # Track window state
+        # Create the main application window
+        self.root.title("avrcSTT")
 
-        # Set layout for custom title bar
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        layout.setSpacing(2)
+        # Set window size
+        self.root.geometry("1280x720")
 
-        # Create title label
-        self.title_label = QLabel("avrcSTT")
-        self.title_label.setStyleSheet("color: white; font-size: 12px; font-weight: bold; border: 2px solid black; border-radius: 12px; margin: 2px;")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if title := parent.windowTitle():
-            self.title_label.setText(title)
-        layout.addWidget(self.title_label)
+        # Create a text display (Text widget)
+        self.text_display = tk.Text(root, wrap="word", height=15, width=60)
+        self.text_display.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Create a frame for the label, combobox, and buttons
+        bottom_frame = ttk.Frame(root)
+        bottom_frame.pack(pady=10, padx=10, fill="x")
+
+        # Left-aligned label and combobox
+        label = ttk.Label(bottom_frame, text="Select Transcribe Model:")
+        label.grid(row=0, column=0, padx=5, sticky="w")
+
+        combo_box = ttk.Combobox(bottom_frame, values=["OpenAI Whisper", "Google Voice Recognition"])
+        combo_box.set("OpenAI Whisper")  # Set default value
+        combo_box.grid(row=0, column=1, padx=5, sticky="w")
+
+        # Create a frame for the right-aligned buttons
+        button_frame = ttk.Frame(bottom_frame)
+        button_frame.grid(row=0, column=2, padx=5, sticky="e")
+
+        # Right-aligned buttons
+        button1 = ttk.Button(button_frame, text="Start STT")
+        button1.pack(side="left", padx=5)
+
+        button2 = ttk.Button(button_frame, text="Stop STT")
+        button2.pack(side="left", padx=5)
+
+        # Configure the grid so that it expands properly
+        bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
+
+        sv_ttk.set_theme("dark")
+        self.apply_theme_to_titlebar(root)
         
-        # Min button
-        min_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarMinButton)
-        self.minimize_button = QPushButton(self)
-        self.minimize_button.setFixedSize(25, 25)
-        self.minimize_button.setStyleSheet("background-color: black; color: white;")
-        self.minimize_button.setIcon(min_icon)
-        self.minimize_button.clicked.connect(self.minimize_window)
+    def apply_theme_to_titlebar(self, root):
+        version = sys.getwindowsversion()
 
-        # Max button
-        max_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarMaxButton)
-        self.maximize_button = QPushButton(self)
-        self.maximize_button.setFixedSize(25, 25)
-        self.maximize_button.setStyleSheet("background-color: black; color: white;")
-        self.maximize_button.setIcon(max_icon)
-        self.maximize_button.clicked.connect(self.toggle_maximize_restore)
+        if version.major == 10 and version.build >= 22000:
+            # Set the title bar color to the background color on Windows 11 for better appearance
+            pywinstyles.change_header_color(root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
+        elif version.major == 10:
+            pywinstyles.apply_style(root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
 
-        # Close button
-        close_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarCloseButton)
-        self.close_button = QPushButton(self)
-        self.close_button.setFixedSize(25, 25)
-        self.close_button.setStyleSheet("background-color: black; color: white;")
-        self.close_button.setIcon(close_icon)
-        self.close_button.clicked.connect(self.close_window)
-
-        buttons = [
-            self.minimize_button,
-            self.maximize_button,
-            self.close_button
-        ]
-        for button in buttons:
-            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            button.setFixedSize(28, 28)
-            button.setStyleSheet("background-color: black; color: white;")
-            layout.addWidget(button)
-
-        # Set layout and background color
-        self.setLayout(layout)
-        self.setStyleSheet("background-color: black; height: 20px;")
-    
-    # Function for Maximize/Normal Button
-    def toggle_maximize_restore(self):
-                normal_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarNormalButton)
-                max_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_TitleBarMaxButton)
-                if self.is_window_maximized:
-                        self.parent.showNormal()  # Restore to normal size
-                        self.is_window_maximized = False
-                        self.maximize_button.setIcon(max_icon)  # Change button to maximize icon
-                else:
-                        self.parent.showMaximized()  # Maximize window
-                        self.is_window_maximized = True
-                        self.maximize_button.setIcon(normal_icon)  # Change button to restore icon
-
-    # Function for Minimize Button
-    def minimize_window(self):
-        self.parent.showMinimized()
-
-    # Function for Close Button
-    def close_window(self):
-        self.parent.close()
-
-    # Allow dragging the custom title bar
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_position = event.globalPosition().toPoint() - self.parent.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.MouseButton.LeftButton:
-            self.parent.move(event.globalPosition().toPoint() - self.drag_position)
-            event.accept()
-
-class CustomWindow(QWidget):
-        def __init__(self):
-                super().__init__()
-
-                # Remove the default title bar
-                self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
-                self.resize(927, 678)
-                self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-                self.title_bar = CustomTitleBar(self)
-
-                # Add content (for demonstration)
-                self.setStyleSheet("background-color: #2C2C2C; border-radius: 12px;")  # Set the background color of the main content
-
-                # centralwidget
-                self.centralwidget = QWidget(parent=self)
-                self.centralwidget.setObjectName("centralwidget")
-                self.centralwidget.resize(927,678)
-
-                # centralwidget_layout 
-                self.centralwidget_layout = QVBoxLayout(self.centralwidget)
-                self.centralwidget_layout.setContentsMargins(2, 2, 2, 2)
-                self.centralwidget_layout.setSpacing(0)
-                self.centralwidget_layout.setObjectName("centralwidget_layout")
-
-                # create main content bar
-                self.content = QFrame()
-                self.content.setStyleSheet("background-color: none")
-                self.content.setContentsMargins(2, 2, 2, 2)
-                self.content.setFrameShape(QFrame.Shape.StyledPanel)
-                self.content.setFrameShadow(QFrame.Shadow.Raised)
-                self.content.setObjectName("content")
-                
-                # create textBrowser
-                self.textBrowser = QTextBrowser(parent=self.content)
-                self.textBrowser.setObjectName("textBrowser")
-                self.content_bar_layout = QHBoxLayout(self.content)  
-                self.content_bar_layout.setContentsMargins(9, 9, 9, 9) 
-                self.content_bar_layout.setSpacing(0)
-                self.content_bar_layout.addWidget(self.textBrowser)
-                self.textBrowser.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-                
-                # model_selection_bar
-                self.model_selection_bar = QFrame()
-                self.model_selection_bar.setStyleSheet("background-color: none")
-                self.model_selection_bar.setFrameShape(QFrame.Shape.StyledPanel)
-                self.model_selection_bar.setFrameShadow(QFrame.Shadow.Raised)
-                self.model_selection_bar.setObjectName("model_selection_bar")
-
-                # create model_selection_bar_layout (horizontalLayout_3)
-                self.model_selection_bar_layout = QHBoxLayout(self.model_selection_bar)
-                self.model_selection_bar_layout.setObjectName("model_selection_bar_layout")
-                self.model_selection_bar_label = QLabel(parent=self.model_selection_bar)
-                self.model_selection_bar_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold; font-family: 'Roboto Black'")
-                #self.model_selection_bar_label.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-                self.model_selection_bar_label.setObjectName("model_selection_bar_label")       
-                self.model_selection_bar_label.setText("Select Transcribe Model:")
-
-                # create comboBox to model_selection_bar
-                self.comboBox = QComboBox(parent=self.model_selection_bar)
-                self.comboBox.setObjectName("comboBox")
-                # create pushButton to model_selection_bar
-                self.pushButton = QPushButton(parent=self.model_selection_bar)
-                self.pushButton.setObjectName("pushButton")
-                # create pushButton_2 to model_selection_bar
-                self.pushButton_2 = QPushButton(parent=self.model_selection_bar)
-                self.pushButton_2.setObjectName("pushButton_2")
-                
-                # add widgets to selection bar layout
-                self.model_selection_bar_layout.addWidget(self.model_selection_bar_label)
-                self.model_selection_bar_layout.addWidget(self.comboBox)
-                self.model_selection_bar_layout.addWidget(self.pushButton)
-                self.model_selection_bar_layout.addWidget(self.pushButton_2)
-                
-                # add widgets
-                self.centralwidget_layout.addWidget(self.title_bar)
-                self.centralwidget_layout.addWidget(self.content)
-                self.centralwidget_layout.addWidget(self.model_selection_bar)
-
-        def showMaximized(self):
-                screen = QGuiApplication.primaryScreen()
-                available_geometry = screen.availableGeometry()
-                self.setGeometry(available_geometry)
-                self.centralwidget.setGeometry(available_geometry)
-                self.update()
-                self.centralwidget.update() 
-        
-        def showNormal(self):   
-                self.resize(927, 678)
-                self.centralwidget.resize(927, 678)
-                self.update()
-                self.centralwidget.update() 
-             
-
-def main():
-    app = QApplication(sys.argv)
-
-    # Create an instance of the custom window
-    window = CustomWindow()
-    window.setGeometry(100, 100, 927, 678)  # Set window size
-    window.show()
-
-    # Start the application event loop
-    sys.exit(app.exec())
-
-if __name__ == "__main__":
-        main()
+            # A hacky way to update the title bar's color on Windows 10 (it doesn't update instantly like on Windows 11)
+            root.wm_attributes("-alpha", 0.99)
+            root.wm_attributes("-alpha", 1)
