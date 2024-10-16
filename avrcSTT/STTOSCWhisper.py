@@ -12,7 +12,6 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 class STTOSCWhisper:
     def __init__(self, whisper_model='small', sample_rate=16000, log_callback=None):
-    
         # Set the IP and port for VRChat's OSC server (localhost and port 9000)
         self.ip = "127.0.0.1"
         self.port = 9000
@@ -42,7 +41,6 @@ class STTOSCWhisper:
         self._running = False
         self.stop_event = threading.Event()
 
-
     def log(self, message):
         if self.log_callback:
             self.log_callback(message)
@@ -54,8 +52,7 @@ class STTOSCWhisper:
             self.recorder.adjust_for_ambient_noise(self.source)
         self.listener = self.recorder.listen_in_background(self.source, self.audio_callback, phrase_time_limit=self.record_timeout)
         self.log("Model Loaded.\n")
-        #print("Model Loaded.\n")
-
+        
     # Callback function for the audio stream. Runs every time new audio is available.
     def audio_callback(self, _, audio:sr.AudioData) -> None:
         data = audio.get_raw_data()
@@ -74,7 +71,6 @@ class STTOSCWhisper:
         
         if np.max(np.abs(audio_array)) == 0:
             self.log("Input audio is silent. Returning empty array.")
-            #print("Input audio is silent. Returning empty array.")
             return np.array([])
         
         # Normalize audio to the range [-1, 1] for consistent energy calculations
@@ -100,7 +96,6 @@ class STTOSCWhisper:
 
         if len(non_silent_indices) == 0:
             self.log("No non-silent audio detected!")
-            #print("No non-silent audio detected!")
             return np.array([])  # Return an empty array if all audio is silent
 
         # Extract the non-silent portion of the audio
@@ -112,7 +107,6 @@ class STTOSCWhisper:
     # Transcribes a chunk of audio data
     def transcribe_audio(self):
         self.log("Starting transcription thread...")
-        #print("Starting transcription thread...")
         self.record_audio()
         while self._running:
             try:
@@ -140,7 +134,6 @@ class STTOSCWhisper:
 
                     if len(trimmed_audio) > 0:
                         self.log("Non-silent audio found, ready for further processing!")
-                        #print("Non-silent audio found, ready for further processing!")
                         result = self.model.transcribe(trimmed_audio, temperature=0.0, beam_size=5, language="en", task="transcribe", fp16=torch.cuda.is_available())
                         transcribed_text = result['text'].strip()
 
@@ -151,45 +144,37 @@ class STTOSCWhisper:
                                 self.transcription[-1] = transcribed_text
                             else:
                                 self.transcription.append(transcribed_text) 
+        
                         # Concatenate the transcription lines into a single string
                         chat_result = ' '.join(self.transcription).strip()
                         if chat_result:
                             if chat_result == 'Thank you.' or chat_result == 'You' or chat_result == 'you':
                                 self.log(f"Whisper likely hallucinating, result not sent: {chat_result}")
-                                #print(f"Whisper likely hallucinating, result not sent: {chat_result}")
                             else:
-                                #self.log(chat_result)
-                                #print(chat_result)
                                 # Send the result to the VRC
                                 self.chatbox(chat_result)
                         else:
                             self.log("Chat result empty.")
-                            #print("Chat result empty.")
                     else:
                         self.log("Audio was entirely silent or below the threshold.")
-                        #print("Audio was entirely silent or below the threshold.")
                 else:
                     sleep(0.25)
             except Exception as e:
                 self.log(f"Error in processing audio: {e}")
-                #print(f"Error in processing audio: {e}")
                 sleep(1) 
             except Empty:
                 continue  # If the queue is empty, keep waiting for new audio chunks
             except KeyboardInterrupt:
                 self.log("Transcription stopped.")
-                #print("Transcription stopped.")
                 break
         self.log("Transcription Stopped Gracefully.")
     
     def start(self):
         self.log("Initializing audio stream...")
-        #print("Initializing audio stream...")
         self._running = True
         self.thread = threading.Thread(target=self.transcribe_audio)
         self.thread.start()
-        #self.transcribe_audio()
-        
+                
     def stop(self):
         self.log("Stopping Recording and transcription.")
         if self._running:
@@ -198,7 +183,7 @@ class STTOSCWhisper:
                 self.listener()
                 self.listener = None
                 self.log("Recording and Transcription stop.")
-                #self.thread.join()
+                #self.thread.join() # Causes application to crash.
             else:
                 self.log("No active recording to stop.")
         else:
@@ -207,7 +192,6 @@ class STTOSCWhisper:
     # Function to send recognized text to VRChat chatbox
     def chatbox(self, text):
         self.log(f"Sending text to chatbox: {text}")
-        #print(f"Sending text to chatbox: {text}")
         # Send the recognized text to the chatbox
         self.client.send_message("/chatbox/input", [text, True])
 
