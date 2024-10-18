@@ -14,20 +14,21 @@ class CustomWindow():
         # Set window size
         self.root.geometry("1280x720")
 
+        font_style_label = ('Roboto', 16)
+        font_style_textbox = ('Roboto', 12)
+
         self.whisper_model = STTOSCWhisper(log_callback=self.update_log)
 
         # Create a text display (Text widget)
-        self.text_display = scrolledtext.ScrolledText(root, wrap="word", height=15, width=60)
+        self.text_display = scrolledtext.ScrolledText(root, wrap="word", height=15, width=60, font=font_style_textbox)
         self.text_display.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Create a frame for the label, combobox, and buttons
         self.bottom_frame = ttk.Frame(root)
         self.bottom_frame.pack(pady=10, padx=10, fill="x")
 
-        font_style = ('Roboto', 16)
-
         # Left-aligned label and combobox
-        self.label = ttk.Label(self.bottom_frame, text="Status: Inactive", font=font_style)
+        self.label = ttk.Label(self.bottom_frame, text="Status: Inactive", font=font_style_label)
         self.label.grid(row=0, column=0, padx=5, sticky="w")
 
         # Create a frame for the right-aligned buttons
@@ -44,7 +45,7 @@ class CustomWindow():
         # Configure the grid so that it expands properly
         self.bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
 
-        sv_ttk.set_theme("dark")
+        sv_ttk.use_dark_theme()
         self.apply_theme_to_titlebar(root)
 
     def update_log(self, message):
