@@ -5,7 +5,7 @@ from queue import Queue, Empty
 from datetime import datetime, timedelta, timezone
 from time import sleep
 
-# Suppress future and user warnings
+# Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
