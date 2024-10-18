@@ -1,39 +1,36 @@
-# avrcSTT - Another VRC Speech To Text
-A learning project for myself to create a speech to text application for VRC
+**Release Notes for avrcSTT - Another VRC Speech to Text
+Version 0.0.10**
 
-**Prerequisites:**
+**Release Date:** 10/18/2024
 
-- Install python libraries
-```
-  pip install python-osc setuptools SpeechRecognition whisper numpy sv_ttk
-```
-- Install ffmpeg for whisper
-```
-# Linux
-sudo apt update && sudo apt install ffmpeg
+**Overview:** avrcSTT is an application designed to enhance your communication experience in VRC. By seamlessly transcribing live audio into text, avrcSTT allows users who do not wish to communicate vocally to engage in chats without the need for manual typing, making interactions more fluid and accessible.
 
-# MacOS
-brew install ffmpeg
+### **Key Features:**
 
-# Windows
-chco install ffmpeg
-```
+**Live Audio Transcription:** Captures real-time audio and converts it to text for instant chat integration.
 
-**Features:**
+**VRC Integration:** Directly inserts transcribed text into the VRC chatbox for effortless communication.
 
-File: main.py 
+### Improvements and Fixes:
 
-- Launches main app gui.
+Initial release of the application with robust functionality for real-time audio processing and transcription.
 
-File: ui_main.py 
+### **Future Plans:**
 
-- Builds gui for application.
+Configurable Settings: Customize recording duration, audio source, and transcription preferences to suit your needs.
+Enhanced accuracy of transcription through optimized audio processing techniques.
 
-File: STTOSCWhisper.py 
+### **Known Issues:**
 
-- Utilizes Openai Whisper to transcribe audio from the microphone and insert the transcribed audio into VRC via the OSC protocol.
+The application may experience delays in transcription for longer phrases or in noisy environments. Future updates will focus on improving accuracy and performance.
+The application utilizes the OpenAI whisper model so it is prone to hallucinations.  (Future releases will aim to reduce the hallucination frequency) 
 
-**Todo:**
+### **Getting Started:**
 
-- Log Transcribes to local db maybe utilizing sqllite
-- Tune output more to reduce hallucinations
+**Installation:** Download the application from 7z file.
+**Setup:** Extract the avrcSTT folder to your preferred location.
+**Launch:** Start the application (avrcSTT.exe) after the application loads select the 'Start STT' button and when the model has finished loading speak to see your words transcribed into the VRC chatbox!
+
+### **Feedback and Support:**
+
+Please report any issues or suggestions to dataclipsedev@gmail.com.
