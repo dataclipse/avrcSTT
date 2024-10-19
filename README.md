@@ -27,9 +27,29 @@ The application utilizes the OpenAI whisper model so it is prone to hallucinatio
 
 ### **Getting Started:**
 
+### **Precompiled:**
+
 **Installation:** Download the application from 7z file.
+
 **Setup:** Extract the avrcSTT folder to your preferred location.
+
 **Launch:** Start the application (avrcSTT.exe) after the application loads select the 'Start STT' button and when the model has finished loading speak to see your words transcribed into the VRC chatbox!
+
+### **Build from Source:**
+
+**Dependencies:**
+Install Python 3.10 or greater
+https://www.python.org/downloads/
+
+After installing Python run the following from command line to install all the library dependencies
+```
+pip install pywinstyles sv_ttk openai-whisper SpeechRecognition python-osc torch pyaudio
+```
+
+**Launch:** The main file can be executed by running
+```
+python avrcstt.py
+```
 
 ### **Feedback and Support:**
 
