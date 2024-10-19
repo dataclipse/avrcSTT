@@ -46,24 +46,26 @@ class CustomWindow():
         self.stop_button.config(state=tk.DISABLED)
 
         # Configure the grid so that it expands properly
-        self.bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
+        self.bottom_frame.grid_columnconfigure(1, weight=1)  
 
         sv_ttk.use_dark_theme()
         self.apply_theme_to_titlebar(root)
 
+    # Function to update the main text field with log messages
     def update_log(self, message):
         self.text_display.config(state=tk.NORMAL)
         self.text_display.insert(tk.END, message + '\n')
         self.text_display.yview(tk.END)
         self.text_display.config(state=tk.DISABLED)
-        
+
+    # Function for Start Button
     def start_transcription(self):
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         self.whisper_model.start()
         self.label.config(text="Status: Active")
         
-
+    # Function for Stop Button
     def stop_transcription(self):
         self.stop_button.config(state=tk.DISABLED)
         self.start_button.config(state=tk.NORMAL)
@@ -78,7 +80,6 @@ class CustomWindow():
             pywinstyles.change_header_color(root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
         elif version.major == 10:
             pywinstyles.apply_style(root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
-
             # A hacky way to update the title bar's color on Windows 10 (it doesn't update instantly like on Windows 11)
             root.wm_attributes("-alpha", 0.99)
             root.wm_attributes("-alpha", 1)
