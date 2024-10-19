@@ -1,4 +1,4 @@
-import whisper, speech_recognition as sr, numpy as np, warnings, torch, threading
+import whisper, speech_recognition as sr, numpy as np, warnings, torch, threading, os
 from sys import platform
 from pythonosc import udp_client
 from queue import Queue, Empty
@@ -42,10 +42,28 @@ class STTOSCWhisper:
         self.stop_event = threading.Event()
 
     def log(self, message):
+        # Init the log directory and log file path
+        log_dir = "logs"
+        log_file = os.path.join(log_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log")
+
+        # Ensure the log directory exists
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Create a log entry with a timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f"[{timestamp}] {message}\n"
+
         if self.log_callback:
             self.log_callback(message)
         else:
             print(message)
+
+        # Write the message to the log file
+        try:
+            with open(log_file, "a") as f:
+                f.write(log_entry)
+        except Exception as e:
+            print(f"Failed to write to log file: {e}")
 
     def record_audio(self):
         with self.source:

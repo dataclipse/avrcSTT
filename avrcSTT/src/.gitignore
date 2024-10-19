@@ -2,6 +2,8 @@
 build/
 dist/
 
+#Ignore Logs
+logs/
 
 #Ignore cache directories
 __pycache__/
