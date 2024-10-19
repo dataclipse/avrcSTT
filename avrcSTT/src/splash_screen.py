@@ -10,7 +10,6 @@ class SplashScreen:
         width = 300
         height = 120
         self.root.geometry(f"{width}x{height}")
-
         # Center the splash screen
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()

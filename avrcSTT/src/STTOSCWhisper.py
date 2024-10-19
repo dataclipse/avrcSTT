@@ -125,14 +125,24 @@ class STTOSCWhisper:
         end_index = min(len(audio_array), non_silent_indices[-1] + 1)
         trimmed_audio = audio_array[start_index:end_index]
         return trimmed_audio
-    
+
+    def clear_chatbox(self):
+        # Log the Chatbox Clear command
+        self.log("Clearing chatbox and audio data queue...")
+        # Clear VRC Chatbox via OSC
+        self.client.send_message("/chatbox/clear", [])
+        # Clear the audio data queue
+        self.data_queue.queue.clear()
+        self.chat_result = None
+        self.timed_transcriptions = []
+
     # Transcribes a chunk of audio data
     def transcribe_audio(self):
         self.log("Starting transcription thread...")
         self.record_audio()
 
         # Store phrases along with their timestamps
-        timed_transcriptions = []
+        self.timed_transcriptions = []
 
         while self._running:
             try:
@@ -156,13 +166,13 @@ class STTOSCWhisper:
                         if transcribed_text.lower() in ['thank you.', 'you']:
                             self.log(f"Whisper likely hallucinating, result not sent: {transcribed_text}")
                         else:
-                            timed_transcriptions.append((now, transcribed_text))
+                            self.timed_transcriptions.append((now, transcribed_text))
 
                         # Concatenate all phrases for chatbox display
-                        chat_result = ' '.join([t[1] for t in timed_transcriptions]).strip()
+                        self.chat_result = ' '.join([t[1] for t in self.timed_transcriptions]).strip()
 
-                        if chat_result:
-                            self.chatbox(chat_result)
+                        if self.chat_result:
+                            self.chatbox(self.chat_result)
                         else:
                             self.log("Chat result empty.")
                     else:
@@ -170,8 +180,8 @@ class STTOSCWhisper:
                 else:
                     sleep(0.25)
 
-                timed_transcriptions = [
-                    (timestamp , phrase) for timestamp, phrase in timed_transcriptions 
+                self.timed_transcriptions = [
+                    (timestamp , phrase) for timestamp, phrase in self.timed_transcriptions 
                     if now - timestamp < timedelta(seconds=15)
                 ]
 

@@ -24,24 +24,28 @@ class CustomWindow():
         self.text_display.pack(padx=10, pady=10, fill="both", expand=True)
         self.text_display.config(state=tk.DISABLED)
 
-        # Create a frame for the label, combobox, and buttons
+        # Create a frame for the label and buttons
         self.bottom_frame = ttk.Frame(root)
         self.bottom_frame.pack(pady=10, padx=10, fill="x")
 
-        # Left-aligned label and combobox
+        # Left-aligned label
         self.label = ttk.Label(self.bottom_frame, text="Status: Inactive", font=font_style_label)
         self.label.grid(row=0, column=0, padx=5, sticky="w")
+        
+        # Centered Button
+        self.clear_button = ttk.Button(self.bottom_frame, text="Clear VRC Chatbox", command=self.clear_chatbox, width=15)
+        self.clear_button.grid(row=0, column=1, padx=5)
 
         # Create a frame for the right-aligned buttons
         self.button_frame = ttk.Frame(self.bottom_frame)
         self.button_frame.grid(row=0, column=2, padx=5, sticky="e")
 
         # Right-aligned buttons
-        self.start_button = ttk.Button(self.button_frame, text="Start STT", command=self.start_transcription)
+        self.start_button = ttk.Button(self.button_frame, text="Start STT", command=self.start_transcription, width=10)
         self.start_button.pack(side="left", padx=5)
         self.start_button.config(state=tk.NORMAL)
 
-        self.stop_button = ttk.Button(self.button_frame, text="Stop STT", command=self.stop_transcription)
+        self.stop_button = ttk.Button(self.button_frame, text="Stop STT", command=self.stop_transcription, width=10)
         self.stop_button.pack(side="left", padx=5)
         self.stop_button.config(state=tk.DISABLED)
 
@@ -50,6 +54,10 @@ class CustomWindow():
 
         sv_ttk.use_dark_theme()
         self.apply_theme_to_titlebar(root)
+
+    # Function to update the chatbox to manually clear.
+    def clear_chatbox(self):
+        self.whisper_model.clear_chatbox()
 
     # Function to update the main text field with log messages
     def update_log(self, message):
@@ -72,6 +80,7 @@ class CustomWindow():
         self.whisper_model.stop()
         self.label.config(text="Status: Inactive")
 
+    # Overwrite the default windows theme on the title bar to give a similar look to the overall theme.
     def apply_theme_to_titlebar(self, root):
         version = sys.getwindowsversion()
 
