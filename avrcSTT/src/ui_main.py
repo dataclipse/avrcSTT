@@ -22,6 +22,7 @@ class CustomWindow():
         # Create a text display (Text widget)
         self.text_display = scrolledtext.ScrolledText(root, wrap="word", height=15, width=60, font=font_style_textbox)
         self.text_display.pack(padx=10, pady=10, fill="both", expand=True)
+        self.text_display.config(state=tk.DISABLED)
 
         # Create a frame for the label, combobox, and buttons
         self.bottom_frame = ttk.Frame(root)
@@ -38,9 +39,11 @@ class CustomWindow():
         # Right-aligned buttons
         self.start_button = ttk.Button(self.button_frame, text="Start STT", command=self.start_transcription)
         self.start_button.pack(side="left", padx=5)
+        self.start_button.config(state=tk.NORMAL)
 
         self.stop_button = ttk.Button(self.button_frame, text="Stop STT", command=self.stop_transcription)
         self.stop_button.pack(side="left", padx=5)
+        self.stop_button.config(state=tk.DISABLED)
 
         # Configure the grid so that it expands properly
         self.bottom_frame.grid_columnconfigure(1, weight=1)  # Ensure column 1 (combo_box) expands
@@ -49,14 +52,21 @@ class CustomWindow():
         self.apply_theme_to_titlebar(root)
 
     def update_log(self, message):
+        self.text_display.config(state=tk.NORMAL)
         self.text_display.insert(tk.END, message + '\n')
         self.text_display.yview(tk.END)
+        self.text_display.config(state=tk.DISABLED)
         
     def start_transcription(self):
+        self.start_button.config(state=tk.DISABLED)
+        self.stop_button.config(state=tk.NORMAL)
         self.whisper_model.start()
         self.label.config(text="Status: Active")
+        
 
     def stop_transcription(self):
+        self.stop_button.config(state=tk.DISABLED)
+        self.start_button.config(state=tk.NORMAL)
         self.whisper_model.stop()
         self.label.config(text="Status: Inactive")
 
