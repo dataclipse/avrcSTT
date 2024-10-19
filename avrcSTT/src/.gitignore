@@ -8,3 +8,6 @@ logs/
 #Ignore cache directories
 __pycache__/
 
+#Ignore Dev Notes
+devnotes.txt
+
