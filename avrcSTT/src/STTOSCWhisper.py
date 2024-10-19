@@ -58,13 +58,16 @@ class STTOSCWhisper:
         data = audio.get_raw_data()
         self.data_queue.put(data)
 
+    # Calculate RMS energy for the current window
     def rms_energy(self, audio_array):
         return np.sqrt(np.mean(np.square(audio_array)))
     
+    # Calculate zero-crossing rate
     def zero_crossing_rate(self, window):
-        zcr = np.mean(np.abs(np.diff(np.sign(window))))  # Calculate zero-crossing rate
+        zcr = np.mean(np.abs(np.diff(np.sign(window))))  
         return zcr
     
+    # Remove silence from audio chunks
     def remove_silence(self, audio_array, sample_rate=16000, window_size=5):
         # Define the window size in frames
         window_length = int(sample_rate * window_size)
@@ -94,9 +97,10 @@ class STTOSCWhisper:
             if energy >= energy_threshold and zcr > 0.1:
                 non_silent_indices.extend(range(start, start + len(window)))
 
+        # Return an empty array if all audio is silent
         if len(non_silent_indices) == 0:
             self.log("No non-silent audio detected!")
-            return np.array([])  # Return an empty array if all audio is silent
+            return np.array([])  
 
         # Extract the non-silent portion of the audio
         start_index = max(0, non_silent_indices[0])
@@ -108,20 +112,16 @@ class STTOSCWhisper:
     def transcribe_audio(self):
         self.log("Starting transcription thread...")
         self.record_audio()
+
+        # Store phrases along with their timestamps
+        timed_transcriptions = []
+
         while self._running:
             try:
                 now = datetime.now(timezone.utc)
+
                 # Check if there is audio data in the queue
                 if not self.data_queue.empty():
-                    phrase_complete = False
-
-                    # Check if the timeout for phrase completion has passed
-                    if self.phrase_time and now - self.phrase_time > timedelta(seconds=self.phrase_timeout):
-                        phrase_complete = True
-                    
-                    # Set phrase time to current timestamp
-                    self.phrase_time = now
-
                     # Combine the audio data from the queue
                     audio_data = b''.join(self.data_queue.queue)
                     self.data_queue.queue.clear()
@@ -129,36 +129,34 @@ class STTOSCWhisper:
                     # Convert buffer to usable audio for the whisper model
                     # Converts the audo from 16 bit to 32 bit and then clamps the audo stream frequency to PCM wavelenght compatible default of 32768hz max
                     audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
-                    
                     trimmed_audio = self.remove_silence(audio_np)
 
                     if len(trimmed_audio) > 0:
-                        self.log("Non-silent audio found, ready for further processing!")
+                        self.log("Audio detected, beginning transcription!")
                         result = self.model.transcribe(trimmed_audio, temperature=0.0, beam_size=5, language="en", task="transcribe", fp16=torch.cuda.is_available())
                         transcribed_text = result['text'].strip()
-
-                        if phrase_complete:
-                            self.transcription = [transcribed_text]
+                        if transcribed_text.lower() in ['thank you.', 'you']:
+                            self.log(f"Whisper likely hallucinating, result not sent: {transcribed_text}")
                         else:
-                            if self.transcription:
-                                self.transcription[-1] = transcribed_text
-                            else:
-                                self.transcription.append(transcribed_text) 
-        
-                        # Concatenate the transcription lines into a single string
-                        chat_result = ' '.join(self.transcription).strip()
+                            timed_transcriptions.append((now, transcribed_text))
+
+                        # Concatenate all phrases for chatbox display
+                        chat_result = ' '.join([t[1] for t in timed_transcriptions]).strip()
+
                         if chat_result:
-                            if chat_result == 'Thank you.' or chat_result == 'You' or chat_result == 'you':
-                                self.log(f"Whisper likely hallucinating, result not sent: {chat_result}")
-                            else:
-                                # Send the result to the VRC
-                                self.chatbox(chat_result)
+                            self.chatbox(chat_result)
                         else:
                             self.log("Chat result empty.")
                     else:
                         self.log("Audio was entirely silent or below the threshold.")
                 else:
                     sleep(0.25)
+
+                timed_transcriptions = [
+                    (timestamp , phrase) for timestamp, phrase in timed_transcriptions 
+                    if now - timestamp < timedelta(seconds=15)
+                ]
+
             except Exception as e:
                 self.log(f"Error in processing audio: {e}")
                 sleep(1) 
