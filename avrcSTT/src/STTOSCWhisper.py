@@ -1,4 +1,4 @@
-import whisper, speech_recognition as sr, numpy as np, warnings, torch, threading, os
+import whisper, speech_recognition as sr, numpy as np, warnings, torch, threading, os, webrtcvad, scipy.ndimage
 from sys import platform
 from pythonosc import udp_client
 from queue import Queue, Empty
@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 class STTOSCWhisper:
-    def __init__(self, whisper_model='small', sample_rate=16000, log_callback=None):
+    def __init__(self, whisper_model='small', sample_rate=16000, frame_duration=20, log_callback=None):
         # Set the IP and port for VRChat's OSC server (localhost and port 9000)
         self.ip = "127.0.0.1"
         self.port = 9000
@@ -26,6 +26,12 @@ class STTOSCWhisper:
         self.recorder.energy_threshold = 3
         self.recorder.dynamic_energy_threshold = False
         self.source = sr.Microphone(sample_rate=16000)
+
+        # Initialize WebRTC VAD to detect voice on audio chunks
+        self.vad = webrtcvad.Vad(2)
+        self.sample_rate = sample_rate
+        self.frame_duration = frame_duration
+        self.frame_size = int (sample_rate * frame_duration / 1000)
 
         # Load the Whisper model
         self.model = whisper.load_model(whisper_model)
@@ -75,55 +81,54 @@ class STTOSCWhisper:
     def audio_callback(self, _, audio:sr.AudioData) -> None:
         data = audio.get_raw_data()
         self.data_queue.put(data)
-
-    # Calculate RMS energy for the current window
-    def rms_energy(self, audio_array):
-        return np.sqrt(np.mean(np.square(audio_array)))
     
-    # Calculate zero-crossing rate
-    def zero_crossing_rate(self, window):
-        zcr = np.mean(np.abs(np.diff(np.sign(window))))  
-        return zcr
-    
-    # Remove silence from audio chunks
-    def remove_silence(self, audio_array, sample_rate=16000, window_size=5):
-        # Define the window size in frames
-        window_length = int(sample_rate * window_size)
-        
-        if np.max(np.abs(audio_array)) == 0:
-            self.log("Input audio is silent. Returning empty array.")
+    # Remove silent audio utilizing VAD (Voice Activation Detection)
+    def remove_silence_VAD(self, audio_array):
+        if len(audio_array) == 0 or np.max(np.abs(audio_array)) == 0:
+            self.log("Input audio is silent or empty. Returning empty array.")
             return np.array([])
         
-        # Normalize audio to the range [-1, 1] for consistent energy calculations
-        normalized_audio = audio_array / np.max(np.abs(audio_array))
-
-        mean_energy = np.mean(np.abs(normalized_audio))
-        energy_threshold = mean_energy * 0.5
-
-        # Store indices of non-silent windows
         non_silent_indices = []
 
-        # Slide the window across the audio signal
-        for start in range(0, len(normalized_audio), window_length):
-            window = normalized_audio[start:start + window_length]
+        for start in range (0, len(audio_array), self.frame_size):
+            # Ensure the end index does not exceed the array size
+            end = min(start + self.frame_size, len(audio_array))
+            frame = audio_array[start:end]
+
+            # Ensure frame has the correct size
+            if len(frame) < self.frame_size:
+                frame = np.pad(frame, (0, self.frame_size - len(frame)), mode='constant')
+
+            # Ensure the frame is a Numpy int16 array
+            frame = (frame * 32767).astype(np.int16)
+
+            # Check if the frame has speech
+            try:
+                if self.vad.is_speech(frame.tobytes(), self.sample_rate):
+                    non_silent_indices.extend(range(start, end))
+            except Exception as e:
+                self.log(f"Error while processing frame: {e}")
             
-            # Calculate RMS energy for the current window
-            energy = self.rms_energy(window)
-
-            zcr = self.zero_crossing_rate(window)
-            # Check if the window contains meaningful audio
-            if energy >= energy_threshold and zcr > 0.1:
-                non_silent_indices.extend(range(start, start + len(window)))
-
-        # Return an empty array if all audio is silent
-        if len(non_silent_indices) == 0:
+        if not non_silent_indices:
             self.log("No non-silent audio detected!")
-            return np.array([])  
+            return np.array([])
+        
+        # Convert non-silent indices to a binary mask
+        mask = np.zeros(len(audio_array))
+        mask[non_silent_indices] = 1
 
-        # Extract the non-silent portion of the audio
-        start_index = max(0, non_silent_indices[0])
-        end_index = min(len(audio_array), non_silent_indices[-1] + 1)
-        trimmed_audio = audio_array[start_index:end_index]
+        # Use dilation to merge close segments
+        smoothed_mask = scipy.ndimage.binary_dilation(mask, iterations=10)
+
+        # Extract final non-silent audio using the smoothed mask
+        final_indices = np.where(smoothed_mask == 1)[0]
+        trimmed_audio = audio_array[final_indices[0]:final_indices[-1] + 1]
+
+        # Extract non-silent audio portion
+        #start_index = max(0, non_silent_indices[0])
+        #end_index = min(len(audio_array), non_silent_indices[-1] + 1)
+        #trimmed_audio = audio_array[start_index:end_index]
+
         return trimmed_audio
 
     def clear_chatbox(self):
@@ -157,13 +162,14 @@ class STTOSCWhisper:
                     # Convert buffer to usable audio for the whisper model
                     # Converts the audo from 16 bit to 32 bit and then clamps the audo stream frequency to PCM wavelenght compatible default of 32768hz max
                     audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
-                    trimmed_audio = self.remove_silence(audio_np)
+                    # Utilize VAD model to detect voice
+                    trimmed_audio = self.remove_silence_VAD(audio_np)
 
                     if len(trimmed_audio) > 0:
                         self.log("Audio detected, beginning transcription!")
-                        result = self.model.transcribe(trimmed_audio, temperature=0.0, beam_size=5, language="en", task="transcribe", fp16=torch.cuda.is_available())
+                        result = self.model.transcribe(trimmed_audio, word_timestamps=True, temperature=0.0, beam_size=5, language="en", task="transcribe", fp16=torch.cuda.is_available())
                         transcribed_text = result['text'].strip()
-                        if transcribed_text.lower() in ['thank you.', 'you']:
+                        if transcribed_text.lower() in ['thank you.', 'you', 'thank you very much.']:
                             self.log(f"Whisper likely hallucinating, result not sent: {transcribed_text}")
                         else:
                             self.timed_transcriptions.append((now, transcribed_text))

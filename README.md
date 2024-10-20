@@ -43,7 +43,7 @@ https://www.python.org/downloads/
 
 After installing Python run the following from command line to install all the library dependencies
 ```
-pip install pywinstyles sv_ttk openai-whisper SpeechRecognition python-osc torch pyaudio
+pip install pywinstyles sv_ttk openai-whisper SpeechRecognition python-osc torch pyaudio webrtcvad scipy
 ```
 
 **Launch:** The main file can be executed by running
