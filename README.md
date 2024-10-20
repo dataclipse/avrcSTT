@@ -1,4 +1,4 @@
-**Release Notes for avrcSTT - Another VRC Speech to Text
+### **Release Notes for avrcSTT - Another VRC Speech to Text
 Version 0.0.11**
 
 **Overview:** avrcSTT is an application designed to enhance your communication experience in VRC. By seamlessly transcribing live audio into text, avrcSTT allows users who do not wish to communicate vocally to engage in chats without the need for manual typing, making interactions more fluid and accessible.
